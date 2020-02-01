@@ -2,6 +2,53 @@
 #include<memory.h>
 #include "AES.h"
 
+/*
+ * Encryption Rounds
+ */
+int g_aes_key_bits[] = {
+    /* AES_CYPHER_128 */ 128,
+    /* AES_CYPHER_192 */ 192,
+    /* AES_CYPHER_256 */ 256,
+};
+
+int g_aes_rounds[] = {
+    /* AES_CYPHER_128 */  10,
+    /* AES_CYPHER_192 */  12,
+    /* AES_CYPHER_256 */  14,
+};
+
+int g_aes_nk[] = {
+    /* AES_CYPHER_128 */  4,
+    /* AES_CYPHER_192 */  6,
+    /* AES_CYPHER_256 */  8,
+};
+
+int g_aes_nb[] = {
+    /* AES_CYPHER_128 */  4,
+    /* AES_CYPHER_192 */  4,
+    /* AES_CYPHER_256 */  4,
+};
+
+
+
+/*
+ * aes Rcon:
+ * round constant for key expansion
+ * WARNING: Rcon is designed starting from 1 to 15, not 0 to 14.
+ *          FIPS-197 Page 9: "note that i starts at 1, not 0"
+ *
+ * i    |   0     1     2     3     4     5     6     7     8     9    10    11    12    13    14
+ * -----+------------------------------------------------------------------------------------------
+ *      | [01]  [02]  [04]  [08]  [10]  [20]  [40]  [80]  [1b]  [36]  [6c]  [d8]  [ab]  [4d]  [9a]
+ * RCON | [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]
+ *      | [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]
+ *      | [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]  [00]
+ */
+ 
+static const uint32_t g_aes_rcon[] = {
+    0x01000000, 0x02000000, 0x04000000, 0x08000000, 0x10000000, 0x20000000, 0x40000000, 0x80000000,
+    0x1b000000, 0x36000000, 0x6c000000, 0xd8000000, 0xab000000, 0xed000000, 0x9a000000
+};
 
 /* aes sbox and invert-sbox */
 static const uint8_t g_aes_sbox[256] = {
@@ -99,15 +146,196 @@ uint8_t GF256_xtime(uint8_t x)
 //AES xtime rounds
 uint8_t aes_xtimes(uint8_t x, int ts)
 {
-    while (ts-- > 0) {
+    while (ts-- > 0)
+    {
         x = GF256_xtime(x);
     }
    
     return x;
 }
 
+//the polynomials multiplication in GF(2^8)
+//basically let polynomial X do xtimes calculation, get all intermediate results
+//then xor those intermediate result with all 1 coefficient of polynomial Y
+uint8_t aes_mul(uint8_t x, uint8_t y)
+{
+    /*
+     * encrypt: y has only 2 bits: can be 1, 2 or 3
+     * decrypt: y could be any value of 9, b, d, or e
+     */
+   
+    return ((((y >> 0) & 0x01) * aes_xtimes(x, 0)) ^
+            (((y >> 1) & 0x01) * aes_xtimes(x, 1)) ^
+            (((y >> 2) & 0x01) * aes_xtimes(x, 2)) ^
+            (((y >> 3) & 0x01) * aes_xtimes(x, 3)) ^
+            (((y >> 4) & 0x01) * aes_xtimes(x, 4)) ^
+            (((y >> 5) & 0x01) * aes_xtimes(x, 5)) ^
+            (((y >> 6) & 0x01) * aes_xtimes(x, 6)) ^
+            (((y >> 7) & 0x01) * aes_xtimes(x, 7)) );
+}
+
+/*
+ * section 5.1, aka. PART A: encryption process
+ */
+
+//5.1.1 sub-bytes
+//use s-box to convert raw data
+void aes_sub_bytes(AES_CYPHER_T mode, uint8_t *state)
+{
+    int i, j;
+   
+    for (i = 0; i < g_aes_nb[mode]; i++)
+    {
+        for (j = 0; j < 4; j++)
+        {
+            state[i * 4 + j] = aes_sub_sbox(state[i * 4 + j]);
+        }
+    }
+}
+
+//5.1.2 shift rows
+//cyclically shifted over the given number
+void aes_shift_rows(AES_CYPHER_T mode, uint8_t *state)
+{
+    // uint8_t *s = (uint8_t *)state;
+    int i, j, r;
+   
+    for (i = 1; i < g_aes_nb[mode]; i++)
+    {
+        for (j = 0; j < i; j++)
+        {
+            uint8_t tmp = state[i];
+            for (r = 0; r < g_aes_nb[mode]; r++)
+            {
+                state[i + r * 4] = state[i + (r + 1) * 4];
+            }
+            state[i + (g_aes_nb[mode] - 1) * 4] = tmp;
+        }
+    }
+}
+
+//5.1.3 mix columns
+//each column considered as a polynomials multiplied with
+//a fixed polynomial a(x) then modulo x^4+1 over GF(2^8)
+//note the given a(x) = {03}x^3 + {01}x^2 + {01}x^1 + {02}x^0 
+void aes_mix_columns(AES_CYPHER_T mode, uint8_t *state)
+{
+    uint8_t y[16] = { 2, 3, 1, 1,  1, 2, 3, 1,  1, 1, 2, 3,  3, 1, 1, 2};
+    uint8_t s[4];
+    int i, j, r;
+   
+    for (i = 0; i < g_aes_nb[mode]; i++)
+    {
+        for (r = 0; r < 4; r++)
+        {
+            s[r] = 0;
+            for (j = 0; j < 4; j++)
+            {
+                s[r] = s[r] ^ aes_mul(state[i * 4 + j], y[r * 4 + j]);
+            }
+        }
+        for (r = 0; r < 4; r++)
+        {
+            state[i * 4 + r] = s[r];
+        }
+    }
+}
+
+//5.1.4 add round key
+void aes_add_round_key(AES_CYPHER_T mode, uint8_t *state, uint8_t *round, int nr)
+{
+    uint32_t *w = (uint32_t *)round;
+    uint32_t *s = (uint32_t *)state;
+    int i;
+   
+    for (i = 0; i < g_aes_nb[mode]; i++)
+    {
+        s[i] ^= w[nr * g_aes_nb[mode] + i];
+    }
+}
+
+
+/*
+ * section 5.2, aka. PART B: key schedule
+ */
+
+/* 
+ * nr: number of rounds
+ * nb: number of columns comprising the state, nb = 4 dwords (16 bytes)
+ * nk: number of 32-bit words comprising cipher key, nk = 4, 6, 8 (KeyLength/(4*8))
+ */
+
+//key expansion, get round key
+void aes_key_expansion(AES_CYPHER_T mode, uint8_t *key, uint8_t *round)
+{
+    uint32_t *w = (uint32_t *)round;
+    uint32_t  t;
+    int      i = 0;
+
+    printf("Key Expansion:\n");
+    do {
+        w[i] = *((uint32_t *)&key[i * 4 + 0]);
+        printf("    %2.2d:  rst: %8.8x\n", i, aes_swap_dword(w[i]));
+    } while (++i < g_aes_nk[mode]);
+   
+    do {
+        printf("    %2.2d: ", i);
+        if ((i % g_aes_nk[mode]) == 0)
+        {
+            t = aes_rot_dword(w[i - 1]);
+            printf(" rot: %8.8x", aes_swap_dword(t));
+            t = aes_sub_dword(t);
+            printf(" sub: %8.8x", aes_swap_dword(t));
+            printf(" rcon: %8.8x", g_aes_rcon[i / g_aes_nk[mode] - 1]);
+            t = t ^ aes_swap_dword(g_aes_rcon[i / g_aes_nk[mode] - 1]);
+            printf(" xor: %8.8x", t);
+        }
+        else if (g_aes_nk[mode] > 6 && (i % g_aes_nk[mode]) == 4)
+        {
+            t = aes_sub_dword(w[i - 1]);
+            printf(" sub: %8.8x", aes_swap_dword(t));
+        }
+        else
+        {
+            t = w[i - 1];
+            printf(" equ: %8.8x", aes_swap_dword(t));
+        }
+        w[i] = w[i - g_aes_nk[mode]] ^ t;
+        printf(" rst: %8.8x\n", aes_swap_dword(w[i]));
+    } while (++i < g_aes_nb[mode] * (g_aes_rounds[mode] + 1));
+   
+    /* key can be discarded (or zeroed) from memory */
+}
+
 int main()
 {
+    uint8_t buf[4][4]            = { 0xd4, 0xbf, 0x5d, 0x30, 0xe0, 0xb4, 0x52, 0xae,
+                                     0xb8, 0x41, 0x11, 0xf1, 0x1e, 0x27, 0x98, 0xe5 };
+    uint8_t roundkey[4 * 4 * 15] = {0};
+    uint8_t inputkey[]           = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                                     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+
+
+    for (int ii = 0; ii < 4; ii++)
+    {
+        for (int jj = 0; jj < 4; jj++)
+        {
+            printf("%02x ", buf[jj][ii]);
+        }
+        printf("\r\n");
+    }
     printf("final result\n");
+    // aes_key_expansion(AES_CYPHER_128, inputkey, roundkey);
+    aes_mix_columns(AES_CYPHER_128, buf);
+    
+    for (int ii = 0; ii < 4; ii++)
+    {
+        for (int jj = 0; jj < 4; jj++)
+        {
+            printf("%02x ", buf[jj][ii]);
+        }
+        printf("\r\n");
+    }
+
     return 0;
 }
