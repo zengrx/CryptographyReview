@@ -222,18 +222,27 @@ void aes_mix_columns(AES_CYPHER_T mode, uint8_t *state)
 {
     uint8_t y[16] = { 2, 3, 1, 1,  1, 2, 3, 1,  1, 1, 2, 3,  3, 1, 1, 2};
     uint8_t s[4];
+    //i-column index of state, max is 4
+    //j-multiply index, max is 4
+    //r-row index of a(x) replaced martix, max is 4
     int i, j, r;
-   
+
+    //state multiplicate fixed a(x)
     for (i = 0; i < g_aes_nb[mode]; i++)
     {
+        //each column of state and a(x)
         for (r = 0; r < 4; r++)
         {
             s[r] = 0;
+            //column multiply a(x)
             for (j = 0; j < 4; j++)
             {
                 s[r] = s[r] ^ aes_mul(state[i * 4 + j], y[r * 4 + j]);
+                printf("%02x ", s[r]);
             }
         }
+        printf("\r\n");
+        //get new column
         for (r = 0; r < 4; r++)
         {
             state[i * 4 + r] = s[r];
@@ -307,6 +316,74 @@ void aes_key_expansion(AES_CYPHER_T mode, uint8_t *key, uint8_t *round)
     /* key can be discarded (or zeroed) from memory */
 }
 
+/**
+ * section 5.3 Inverse Cipher 
+ */
+
+//5.3.1 InvShiftRows
+//same shift direction with shiftrows, different times
+void inv_shift_rows(AES_CYPHER_T mode, uint8_t *state)
+{
+    uint8_t *s = (uint8_t *)state;
+    int i, j, r;
+
+    for (i = 1; i < g_aes_nb[mode]; i++)
+    {
+        for (j = 0; j < g_aes_nb[mode] - i; j++)
+        {
+            uint8_t tmp = s[i];
+            for (r = 0; r < g_aes_nb[mode]; r++)
+            {
+                s[i + r * 4] = s[i + (r + 1) * 4];
+            }
+            s[i + (g_aes_nb[mode] - 1) * 4] = tmp;
+        }
+    }
+}
+
+//5.3.2 InvSubBytes
+//use inverse s-box to convert input data
+void inv_sub_bytes(AES_CYPHER_T mode, uint8_t *state)
+{
+    int i, j;
+   
+    for (i = 0; i < g_aes_nb[mode]; i++)
+    {
+        for (j = 0; j < 4; j++)
+        {
+            state[i * 4 + j] = inv_sub_sbox(state[i * 4 + j]);
+        }
+    }
+}
+
+//5.3.3 InvMixColumns
+//polynomial a^-1(x) = {0b}x^3 + {0d}x^2 + {09}x^1 + {0e}x^0
+void inv_mix_columns(AES_CYPHER_T mode, uint8_t *state)
+{
+    uint8_t y[16] = {0x0e, 0x0b, 0x0d, 0x09,  
+                     0x09, 0x0e, 0x0b, 0x0d,
+                     0x0d, 0x09, 0x0e, 0x0b,
+                     0x0b, 0x0d, 0x09, 0x0e};
+    uint8_t s[4];
+    int i, j, r;
+
+    for (i = 0; i < g_aes_nb[mode]; i++)
+    {
+        for (r = 0; r < 4; r++)
+        {
+            s[r] = 0;
+            for (j = 0; j < 4; j++)
+            {
+                s[r] = s[r] ^ aes_mul(state[i * 4 + j], y[r * 4 + j]);
+            }
+        }
+        for (r = 0; r < 4; r++)
+        {
+            state[i * 4 + r] = s[r];
+        }
+    }
+}
+
 int main()
 {
     uint8_t buf[4][4]            = { 0xd4, 0xbf, 0x5d, 0x30, 0xe0, 0xb4, 0x52, 0xae,
@@ -326,7 +403,7 @@ int main()
     }
     printf("final result\n");
     // aes_key_expansion(AES_CYPHER_128, inputkey, roundkey);
-    aes_mix_columns(AES_CYPHER_128, buf);
+    aes_mix_columns(AES_CYPHER_128, (uint8_t *)buf);
     
     for (int ii = 0; ii < 4; ii++)
     {
