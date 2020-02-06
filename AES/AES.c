@@ -174,6 +174,31 @@ uint8_t aes_mul(uint8_t x, uint8_t y)
             (((y >> 7) & 0x01) * aes_xtimes(x, 7)) );
 }
 
+//aes hex dump
+void aes_dump(char *msg, uint8_t *data, int len)
+{
+    int i, j;
+   
+    printf("   %s: ", msg);
+    for (i = 0; i < len / 4; i++)
+    {
+        printf("\r\n");
+        for (j = 0; j < 4; j++)
+        {
+            if (j == 0)
+            {
+                printf("%10.2x", data[j * 4 + i]);
+            }
+            else
+            {
+                printf(" %02x", data[j * 4 + i]);
+            }
+        }
+        
+    }
+    printf("\n");
+}
+
 /*
  * section 5.1, aka. PART A: encryption process
  */
@@ -238,10 +263,10 @@ void aes_mix_columns(AES_CYPHER_T mode, uint8_t *state)
             for (j = 0; j < 4; j++)
             {
                 s[r] = s[r] ^ aes_mul(state[i * 4 + j], y[r * 4 + j]);
-                printf("%02x ", s[r]);
+                // printf("%02x ", s[r]);
             }
         }
-        printf("\r\n");
+        // printf("\r\n");
         //get new column
         for (r = 0; r < 4; r++)
         {
@@ -384,14 +409,90 @@ void inv_mix_columns(AES_CYPHER_T mode, uint8_t *state)
     }
 }
 
+//AES encryption
+/**
+ * section 5.1 Cipher
+ * figure 5
+ */ 
+int aes_encrypt(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key)
+{
+    uint8_t w[4 * 4 * 15] = {0}; /* round key */
+    uint8_t s[4 * 4] = {0}; /* state */
+   
+    int nr, i, j;
+   
+    /* key expansion */
+    aes_key_expansion(mode, key, w);
+   
+    /* start data cypher loop over input buffer */
+    for (i = 0; i < len; i += 4 * g_aes_nb[mode])
+    {
+        printf("Encrypting block at %u ...\n", i);
+
+        /* init state from user buffer (plaintext) */
+        for (j = 0; j < 4 * g_aes_nb[mode]; j++)
+        {
+            s[j] = data[i + j];
+        }
+        
+        /* start AES cypher loop over all AES rounds */
+        for (nr = 0; nr <= g_aes_rounds[mode]; nr++)
+        {
+            printf(" [Round %d]\n", nr);
+            aes_dump("input", s, 4 * g_aes_nb[mode]);
+            
+            if (nr > 0)
+            {   
+                /* do SubBytes */
+                aes_sub_bytes(mode, s);
+                aes_dump("SubBytes", s, 4 * g_aes_nb[mode]);
+                
+                /* do ShiftRows */
+                aes_shift_rows(mode, s);
+                aes_dump("ShiftRows", s, 4 * g_aes_nb[mode]);
+                
+                if (nr < g_aes_rounds[mode])
+                {
+                    /* do MixColumns */
+                    aes_mix_columns(mode, s);
+                    aes_dump("MixColumns", s, 4 * g_aes_nb[mode]);
+                }
+            }
+           
+            /* do AddRoundKey */
+            aes_add_round_key(mode, s, w, nr);
+            aes_dump("RoundKey", &w[nr * 4 * g_aes_nb[mode]], 4 * g_aes_nb[mode]);
+            aes_dump("state", s, 4 * g_aes_nb[mode]);
+        }
+       
+        /* save state (cypher) to user buffer */
+        for (j = 0; j < 4 * g_aes_nb[mode]; j++)
+        {
+            data[i + j] = s[j];
+        }
+
+        printf("Output:\n");
+        aes_dump("cypher", &data[i], 4 * g_aes_nb[mode]);
+    }
+   
+    return 0;
+}
+
+
 int main()
 {
-    uint8_t buf[4][4]            = { 0xd4, 0xbf, 0x5d, 0x30, 0xe0, 0xb4, 0x52, 0xae,
+    uint8_t anni_buf[]           = { 0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d,
+                                     0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34 };
+    uint8_t anni_key[]           = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+                                     0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
+    uint8_t buf[]                = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+                                     0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+    uint8_t buf1[14][4]          = { 0xd4, 0xbf, 0x5d, 0x30, 0xe0, 0xb4, 0x52, 0xae,
                                      0xb8, 0x41, 0x11, 0xf1, 0x1e, 0x27, 0x98, 0xe5 };
     uint8_t roundkey[4 * 4 * 15] = {0};
     uint8_t inputkey[]           = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                                      0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
-
+#if 0
 
     for (int ii = 0; ii < 4; ii++)
     {
@@ -413,6 +514,9 @@ int main()
         }
         printf("\r\n");
     }
+#endif
+
+    aes_encrypt(AES_CYPHER_128, anni_buf, sizeof(anni_buf), anni_key);
 
     return 0;
 }
