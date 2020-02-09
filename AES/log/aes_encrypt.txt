@@ -1,0 +1,373 @@
+Key Expansion:
+    00:  rst: 2b7e1516
+    01:  rst: 28aed2a6
+    02:  rst: abf71588
+    03:  rst: 09cf4f3c
+    04:  rot: cf4f3c09 sub: 8a84eb01 rcon: 01000000 xor: 01eb848b rst: a0fafe17
+    05:  equ: a0fafe17 rst: 88542cb1
+    06:  equ: 88542cb1 rst: 23a33939
+    07:  equ: 23a33939 rst: 2a6c7605
+    08:  rot: 6c76052a sub: 50386be5 rcon: 02000000 xor: e56b3852 rst: f2c295f2
+    09:  equ: f2c295f2 rst: 7a96b943
+    10:  equ: 7a96b943 rst: 5935807a
+    11:  equ: 5935807a rst: 7359f67f
+    12:  rot: 59f67f73 sub: cb42d28f rcon: 04000000 xor: 8fd242cf rst: 3d80477d
+    13:  equ: 3d80477d rst: 4716fe3e
+    14:  equ: 4716fe3e rst: 1e237e44
+    15:  equ: 1e237e44 rst: 6d7a883b
+    16:  rot: 7a883b6d sub: dac4e23c rcon: 08000000 xor: 3ce2c4d2 rst: ef44a541
+    17:  equ: ef44a541 rst: a8525b7f
+    18:  equ: a8525b7f rst: b671253b
+    19:  equ: b671253b rst: db0bad00
+    20:  rot: 0bad00db sub: 2b9563b9 rcon: 10000000 xor: b963953b rst: d4d1c6f8
+    21:  equ: d4d1c6f8 rst: 7c839d87
+    22:  equ: 7c839d87 rst: caf2b8bc
+    23:  equ: caf2b8bc rst: 11f915bc
+    24:  rot: f915bc11 sub: 99596582 rcon: 20000000 xor: 826559b9 rst: 6d88a37a
+    25:  equ: 6d88a37a rst: 110b3efd
+    26:  equ: 110b3efd rst: dbf98641
+    27:  equ: dbf98641 rst: ca0093fd
+    28:  rot: 0093fdca sub: 63dc5474 rcon: 40000000 xor: 7454dc23 rst: 4e54f70e
+    29:  equ: 4e54f70e rst: 5f5fc9f3
+    30:  equ: 5f5fc9f3 rst: 84a64fb2
+    31:  equ: 84a64fb2 rst: 4ea6dc4f
+    32:  rot: a6dc4f4e sub: 2486842f rcon: 80000000 xor: 2f8486a4 rst: ead27321
+    33:  equ: ead27321 rst: b58dbad2
+    34:  equ: b58dbad2 rst: 312bf560
+    35:  equ: 312bf560 rst: 7f8d292f
+    36:  rot: 8d292f7f sub: 5da515d2 rcon: 1b000000 xor: d215a546 rst: ac7766f3
+    37:  equ: ac7766f3 rst: 19fadc21
+    38:  equ: 19fadc21 rst: 28d12941
+    39:  equ: 28d12941 rst: 575c006e
+    40:  rot: 5c006e57 sub: 4a639f5b rcon: 36000000 xor: 5b9f637c rst: d014f9a8
+    41:  equ: d014f9a8 rst: c9ee2589
+    42:  equ: c9ee2589 rst: e13f0cc8
+    43:  equ: e13f0cc8 rst: b6630ca6
+Encrypting block at 0 ...
+ [Round 0]
+   input:
+        32 88 31 e0
+        43 5a 31 37
+        f6 30 98 07
+        a8 8d a2 34
+   RoundKey:
+        2b 28 ab 09
+        7e ae f7 cf
+        15 d2 15 4f
+        16 a6 88 3c
+   state:
+        19 a0 9a e9
+        3d f4 c6 f8
+        e3 e2 8d 48
+        be 2b 2a 08
+ [Round 1]
+   input:
+        19 a0 9a e9
+        3d f4 c6 f8
+        e3 e2 8d 48
+        be 2b 2a 08
+   SubBytes:
+        d4 e0 b8 1e
+        27 bf b4 41
+        11 98 5d 52
+        ae f1 e5 30
+   ShiftRows:
+        d4 e0 b8 1e
+        bf b4 41 27
+        5d 52 11 98
+        30 ae f1 e5
+   MixColumns:
+        04 e0 48 28
+        66 cb f8 06
+        81 19 d3 26
+        e5 9a 7a 4c
+   RoundKey:
+        a0 88 23 2a
+        fa 54 a3 6c
+        fe 2c 39 76
+        17 b1 39 05
+   state:
+        a4 68 6b 02
+        9c 9f 5b 6a
+        7f 35 ea 50
+        f2 2b 43 49
+ [Round 2]
+   input:
+        a4 68 6b 02
+        9c 9f 5b 6a
+        7f 35 ea 50
+        f2 2b 43 49
+   SubBytes:
+        49 45 7f 77
+        de db 39 02
+        d2 96 87 53
+        89 f1 1a 3b
+   ShiftRows:
+        49 45 7f 77
+        db 39 02 de
+        87 53 d2 96
+        3b 89 f1 1a
+   MixColumns:
+        58 1b db 1b
+        4d 4b e7 6b
+        ca 5a ca b0
+        f1 ac a8 e5
+   RoundKey:
+        f2 7a 59 73
+        c2 96 35 59
+        95 b9 80 f6
+        f2 43 7a 7f
+   state:
+        aa 61 82 68
+        8f dd d2 32
+        5f e3 4a 46
+        03 ef d2 9a
+ [Round 3]
+   input:
+        aa 61 82 68
+        8f dd d2 32
+        5f e3 4a 46
+        03 ef d2 9a
+   SubBytes:
+        ac ef 13 45
+        73 c1 b5 23
+        cf 11 d6 5a
+        7b df b5 b8
+   ShiftRows:
+        ac ef 13 45
+        c1 b5 23 73
+        d6 5a cf 11
+        b8 7b df b5
+   MixColumns:
+        75 20 53 bb
+        ec 0b c0 25
+        09 63 cf d0
+        93 33 7c dc
+   RoundKey:
+        3d 47 1e 6d
+        80 16 23 7a
+        47 fe 7e 88
+        7d 3e 44 3b
+   state:
+        48 67 4d d6
+        6c 1d e3 5f
+        4e 9d b1 58
+        ee 0d 38 e7
+ [Round 4]
+   input:
+        48 67 4d d6
+        6c 1d e3 5f
+        4e 9d b1 58
+        ee 0d 38 e7
+   SubBytes:
+        52 85 e3 f6
+        50 a4 11 cf
+        2f 5e c8 6a
+        28 d7 07 94
+   ShiftRows:
+        52 85 e3 f6
+        a4 11 cf 50
+        c8 6a 2f 5e
+        94 28 d7 07
+   MixColumns:
+        0f 60 6f 5e
+        d6 31 c0 b3
+        da 38 10 13
+        a9 bf 6b 01
+   RoundKey:
+        ef a8 b6 db
+        44 52 71 0b
+        a5 5b 25 ad
+        41 7f 3b 00
+   state:
+        e0 c8 d9 85
+        92 63 b1 b8
+        7f 63 35 be
+        e8 c0 50 01
+ [Round 5]
+   input:
+        e0 c8 d9 85
+        92 63 b1 b8
+        7f 63 35 be
+        e8 c0 50 01
+   SubBytes:
+        e1 e8 35 97
+        4f fb c8 6c
+        d2 fb 96 ae
+        9b ba 53 7c
+   ShiftRows:
+        e1 e8 35 97
+        fb c8 6c 4f
+        96 ae d2 fb
+        7c 9b ba 53
+   MixColumns:
+        25 bd b6 4c
+        d1 11 3a 4c
+        a9 d1 33 c0
+        ad 68 8e b0
+   RoundKey:
+        d4 7c ca 11
+        d1 83 f2 f9
+        c6 9d b8 15
+        f8 87 bc bc
+   state:
+        f1 c1 7c 5d
+        00 92 c8 b5
+        6f 4c 8b d5
+        55 ef 32 0c
+ [Round 6]
+   input:
+        f1 c1 7c 5d
+        00 92 c8 b5
+        6f 4c 8b d5
+        55 ef 32 0c
+   SubBytes:
+        a1 78 10 4c
+        63 4f e8 d5
+        a8 29 3d 03
+        fc df 23 fe
+   ShiftRows:
+        a1 78 10 4c
+        4f e8 d5 63
+        3d 03 a8 29
+        fe fc df 23
+   MixColumns:
+        4b 2c 33 37
+        86 4a 9d d2
+        8d 89 f4 18
+        6d 80 e8 d8
+   RoundKey:
+        6d 11 db ca
+        88 0b f9 00
+        a3 3e 86 93
+        7a fd 41 fd
+   state:
+        26 3d e8 fd
+        0e 41 64 d2
+        2e b7 72 8b
+        17 7d a9 25
+ [Round 7]
+   input:
+        26 3d e8 fd
+        0e 41 64 d2
+        2e b7 72 8b
+        17 7d a9 25
+   SubBytes:
+        f7 27 9b 54
+        ab 83 43 b5
+        31 a9 40 3d
+        f0 ff d3 3f
+   ShiftRows:
+        f7 27 9b 54
+        83 43 b5 ab
+        40 3d 31 a9
+        3f f0 ff d3
+   MixColumns:
+        14 46 27 34
+        15 16 46 2a
+        b5 15 56 d8
+        bf ec d7 43
+   RoundKey:
+        4e 5f 84 4e
+        54 5f a6 a6
+        f7 c9 4f dc
+        0e f3 b2 4f
+   state:
+        5a 19 a3 7a
+        41 49 e0 8c
+        42 dc 19 04
+        b1 1f 65 0c
+ [Round 8]
+   input:
+        5a 19 a3 7a
+        41 49 e0 8c
+        42 dc 19 04
+        b1 1f 65 0c
+   SubBytes:
+        be d4 0a da
+        83 3b e1 64
+        2c 86 d4 f2
+        c8 c0 4d fe
+   ShiftRows:
+        be d4 0a da
+        3b e1 64 83
+        d4 f2 2c 86
+        fe c8 c0 4d
+   MixColumns:
+        00 b1 54 fa
+        51 c8 76 1b
+        2f 89 6d 99
+        d1 ff cd ea
+   RoundKey:
+        ea b5 31 7f
+        d2 8d 2b 8d
+        73 ba f5 29
+        21 d2 60 2f
+   state:
+        ea 04 65 85
+        83 45 5d 96
+        5c 33 98 b0
+        f0 2d ad c5
+ [Round 9]
+   input:
+        ea 04 65 85
+        83 45 5d 96
+        5c 33 98 b0
+        f0 2d ad c5
+   SubBytes:
+        87 f2 4d 97
+        ec 6e 4c 90
+        4a c3 46 e7
+        8c d8 95 a6
+   ShiftRows:
+        87 f2 4d 97
+        6e 4c 90 ec
+        46 e7 4a c3
+        a6 8c d8 95
+   MixColumns:
+        47 40 a3 4c
+        37 d4 70 9f
+        94 e4 3a 42
+        ed a5 a6 bc
+   RoundKey:
+        ac 19 28 57
+        77 fa d1 5c
+        66 dc 29 00
+        f3 21 41 6e
+   state:
+        eb 59 8b 1b
+        40 2e a1 c3
+        f2 38 13 42
+        1e 84 e7 d2
+ [Round 10]
+   input:
+        eb 59 8b 1b
+        40 2e a1 c3
+        f2 38 13 42
+        1e 84 e7 d2
+   SubBytes:
+        e9 cb 3d af
+        09 31 32 2e
+        89 07 7d 2c
+        72 5f 94 b5
+   ShiftRows:
+        e9 cb 3d af
+        31 32 2e 09
+        7d 2c 89 07
+        b5 72 5f 94
+   RoundKey:
+        d0 c9 e1 b6
+        14 ee 3f 63
+        f9 25 0c 0c
+        a8 89 c8 a6
+   state:
+        39 02 dc 19
+        25 dc 11 6a
+        84 09 85 0b
+        1d fb 97 32
+Output:
+   cypher:
+        39 02 dc 19
+        25 dc 11 6a
+        84 09 85 0b
+        1d fb 97 32
