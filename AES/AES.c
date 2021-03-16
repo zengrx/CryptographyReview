@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>
 #include <string.h>
@@ -550,6 +551,56 @@ int aes_equ_decrypt(AES_CYPHER_T mode, uint8_t *data, uint8_t *key)
     return 0;
 }
 
+//------------------------------
+//-------AES Operate Mode-------
+//------------------------------
+
+/**
+ * AES Cipher Block Chainning Mode
+ */
+int aes_encrypt_cbc(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key, uint8_t *iv)
+{
+    int ret = 0;
+    uint8_t *d;      //data block
+    uint8_t *i;      //input block
+    uint8_t *c;      //cipher block
+    uint8_t *iv_tmp; //iv
+
+    int n;           //counter, from 0 to 31
+    d = malloc((size_t)len);
+    memcpy(d, data, len);
+    iv_tmp = malloc(16);
+    memcpy(iv_tmp, iv, 16);
+
+    while (len)
+    {
+        //iv xor data block
+        for (n = 0; n < 16 && n < len; n++)
+        {
+            i[n] = d[n] ^ iv_tmp[n];
+        }
+        //this round's cipher equ next round's iv
+        //so prepare it, the n is next round's index
+        for (; n < 16; n++)
+        {
+            i[n] = iv_tmp[n];
+        }
+        aes_encrypt(mode, i, key);
+        //we don't use cipher var, after encrypt i has been updated
+        iv_tmp = i;
+        if (len <= 16)
+        {
+            break;
+        }
+        len -= 16; //control the circle
+        d += 16; //pointer address add
+        i += 16; //pointer address add
+    }
+    memcpy(iv, iv_tmp, 16);
+
+    return ret;
+}
+
 int main1()
 {
     printf("%02x", aes_mul(0x57, 0x83));
@@ -563,7 +614,14 @@ int main()
 
     uint8_t anni_buf1[] = {0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d,
                            0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34,
-                           0x31, 0x31, 0x98, 0xa2, 0xe0};
+                           0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d,
+                           0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34,
+                           0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d,
+                           0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34,
+                           0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d,
+                           0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34,
+                           0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d,
+                           0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34};
 
     uint8_t anni_key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
                           0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
@@ -615,11 +673,16 @@ int main()
     }
 #endif
 
-    aes_encrypt(AES_CYPHER_128, anni_buf, anni_key);
+    // aes_encrypt(AES_CYPHER_128, anni_buf, anni_key);
     // aes_encrypt(AES_CYPHER_192, anni_buf, key_192);
 
-    aes_equ_decrypt(AES_CYPHER_128, anni_buf, anni_key);
+    // aes_equ_decrypt(AES_CYPHER_128, anni_buf, anni_key);
     // aes_equ_decrypt(AES_CYPHER_192, anni_buf, key_192);
+
+    unsigned char iv[] = {1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1};
+
+    // aes_encrypt_cbc(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), anni_key, iv);
+    aes_encrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
 
     return 0;
 }
