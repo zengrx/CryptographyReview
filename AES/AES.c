@@ -563,19 +563,21 @@ int aes_encrypt_cbc(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key, uin
     int ret = 0;
     uint8_t *d;      //data block
     uint8_t *i;      //input block
-    uint8_t *c;      //cipher block
+    uint8_t *c;      //cipher block (unused, aes_encrypt return data from i's address)
     uint8_t *iv_tmp; //iv
+    int len_tmp = len;
 
     int n;           //counter, from 0 to 31
-    d = malloc((size_t)len);
+    d = malloc(len);
     memcpy(d, data, len);
-    iv_tmp = malloc(16);
+    iv_tmp = malloc(len);
     memcpy(iv_tmp, iv, 16);
+    i = malloc(len);
 
-    while (len)
+    while (len_tmp)
     {
         //iv xor data block
-        for (n = 0; n < 16 && n < len; n++)
+        for (n = 0; n < 16 && n < len_tmp; n++)
         {
             i[n] = d[n] ^ iv_tmp[n];
         }
@@ -588,15 +590,16 @@ int aes_encrypt_cbc(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key, uin
         aes_encrypt(mode, i, key);
         //we don't use cipher var, after encrypt i has been updated
         iv_tmp = i;
-        if (len <= 16)
+        if (len_tmp <= 16)
         {
             break;
         }
-        len -= 16; //control the circle
+        len_tmp -= 16; //control the circle
         d += 16; //pointer address add
         i += 16; //pointer address add
     }
-    memcpy(iv, iv_tmp, 16);
+
+    memcpy(data, &i[16 - len], len);
 
     return ret;
 }
@@ -683,6 +686,19 @@ int main()
 
     // aes_encrypt_cbc(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), anni_key, iv);
     aes_encrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
+    int ii;
+    for (ii = 0; ii < 16; ii++)
+    {
+        printf("%02x ", iv[ii]);
+    }
+    printf("\n");
+
+    for (ii = 0; ii < sizeof(anni_buf1); ii++)
+    {
+        printf("%02x ", anni_buf1[ii]);
+    }
+    printf("\n");
+    
 
     return 0;
 }
