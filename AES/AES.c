@@ -604,6 +604,48 @@ int aes_encrypt_cbc(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key, uin
     return ret;
 }
 
+/**
+ * AES Cipher Block Chainning Decrypt
+ * decryption can be performed in parallel
+ */
+int aes_decrypt_cbc(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key, uint8_t *iv)
+{
+    int ret = 0;
+    uint8_t *d; // data
+    uint8_t *i; // input
+    uint8_t *iv_tmp; // iv tmp
+    int len_tmp = len;
+
+    d = malloc(len);
+    i = malloc(len);
+    memcpy(i, data, len);
+    iv_tmp = malloc(len);
+    memcpy(iv_tmp, iv, 16);
+    memcpy(iv_tmp + 16, data, len - 16); // perpare iv
+
+    while (len_tmp)
+    {
+        aes_equ_decrypt(mode, i, key);
+        for (int n = 0; n < 16; n++)
+        {
+            d[n] = i[n] ^ iv_tmp[n];
+        }
+        if (len_tmp <= 16)
+        {
+            break;
+        }
+        len_tmp -= 16;
+        d += 16;
+        i += 16;
+        iv_tmp += 16;
+    }
+
+    memcpy(data, &d[16 - len], len);
+    // free(&d[16 - len]);
+
+    return ret;
+}
+
 int main1()
 {
     printf("%02x", aes_mul(0x57, 0x83));
@@ -684,8 +726,8 @@ int main()
 
     unsigned char iv[] = {1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1};
 
-    // aes_encrypt_cbc(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), anni_key, iv);
-    aes_encrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
+    aes_encrypt_cbc(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), anni_key, iv);
+    // aes_encrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
     int ii;
     for (ii = 0; ii < 16; ii++)
     {
@@ -699,6 +741,14 @@ int main()
     }
     printf("\n");
     
+    aes_decrypt_cbc(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), anni_key, iv);
+    // aes_decrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
+
+    for (ii = 0; ii < sizeof(anni_buf1); ii++)
+    {
+        printf("%02x ", anni_buf1[ii]);
+    }
+    printf("\n");
 
     return 0;
 }
