@@ -646,6 +646,61 @@ int aes_decrypt_cbc(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key, uin
     return ret;
 }
 
+/**
+ * Cipher Feedback Mode
+ * 128 bits shift, next round input equ cipher
+ * no need padding
+ * also called full-block CFB
+ * enc is encrypt flag, 0-decrypt 1-encrypt
+ */
+int aes_encrypt_cfb128(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key,
+                       uint8_t *iv, int *num, int enc)
+{
+    int ret = 0;
+    int n, l = 0;
+    uint8_t *iv_tmp;
+    uint8_t *cipher;
+
+    cipher = malloc(len);
+    iv_tmp = malloc(16);
+    if (cipher == NULL || iv_tmp == NULL)
+    {
+        printf("malloc failed\n");
+        return -1;
+    }
+    memcpy(iv_tmp, iv, 16);
+
+    n = *num; // data len check
+
+    while (l < len)
+    {
+        if (n == 0)
+        {
+            aes_encrypt(mode, iv_tmp, key);
+        }
+        if (enc)
+        {
+            cipher[l] = iv_tmp[n] ^= data[l];
+        }
+        else
+        {
+            cipher[l] = iv_tmp[n] ^ data[l];
+            iv_tmp[n] = data[l];
+        }
+        l++;
+        n = (n + 1) % 16;
+        *num = n;
+    }
+    memcpy(data, cipher, len);
+
+    free(cipher);
+    free(iv_tmp);
+    cipher = NULL;
+    iv_tmp = NULL;
+
+    return 0;
+}
+
 int main1()
 {
     printf("%02x", aes_mul(0x57, 0x83));
@@ -654,6 +709,7 @@ int main1()
 
 int main()
 {
+#if 0
     uint8_t anni_buf[] = {0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d,
                           0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34};
 
@@ -689,6 +745,8 @@ int main()
 
     uint8_t inputkey[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                           0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+#endif
+                        
 #if 0
 
     for (int ii = 0; ii < 4; ii++)
@@ -718,12 +776,15 @@ int main()
     }
 #endif
 
-    // aes_encrypt(AES_CYPHER_128, anni_buf, anni_key);
-    // aes_encrypt(AES_CYPHER_192, anni_buf, key_192);
+#ifdef AES_ORIGIN
+    aes_encrypt(AES_CYPHER_128, anni_buf, anni_key);
+    aes_encrypt(AES_CYPHER_192, anni_buf, key_192);
 
-    // aes_equ_decrypt(AES_CYPHER_128, anni_buf, anni_key);
-    // aes_equ_decrypt(AES_CYPHER_192, anni_buf, key_192);
+    aes_equ_decrypt(AES_CYPHER_128, anni_buf, anni_key);
+    aes_equ_decrypt(AES_CYPHER_192, anni_buf, key_192);
+#endif
 
+#ifdef AES_CBC
     unsigned char iv[] = {1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1};
 
     aes_encrypt_cbc(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), anni_key, iv);
@@ -749,6 +810,55 @@ int main()
         printf("%02x ", anni_buf1[ii]);
     }
     printf("\n");
+#endif
+
+#define AES_CFB
+#ifdef AES_CFB
+    int num = 0;
+    uint8_t anni_buf2[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
+                           0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
+                           0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
+                           0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51,
+                           0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11,
+                           0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef,
+                           0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17,
+                           0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10};
+
+    uint8_t anni_buf1[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
+                           0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
+                           0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
+                           0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51,
+                           0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11,
+                           0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef,
+                           0xf6, 0x9f, 0x24, 0x45};
+    
+    uint8_t key[]       = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+                           0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
+
+    uint8_t key_192[]   = {0x8e, 0x73, 0xb0, 0xf7, 0xda, 0x0e, 0x64, 0x52,
+                           0xc8, 0x10, 0xf3, 0x2b, 0x80, 0x90, 0x79, 0xe5,
+                           0x62, 0xf8, 0xea, 0xd2, 0x52, 0x2c, 0x6b, 0x7b};
+    
+    uint8_t iv[]        = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    
+    // the back value of num should equ len % 16
+    aes_encrypt_cfb128(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv, &num, 1);
+    for (int ii = 0; ii < sizeof(anni_buf1); ii++)
+    {
+        printf("%02x ", anni_buf1[ii]);
+    }
+    printf("\n");
+
+    num = 0;
+    aes_encrypt_cfb128(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv, &num, 0);
+    for (int ii = 0; ii < sizeof(anni_buf1); ii++)
+    {
+        printf("%02x ", anni_buf1[ii]);
+    }
+    printf("\n");
+    
+#endif
 
     return 0;
 }
