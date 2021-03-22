@@ -552,6 +552,50 @@ int aes_equ_decrypt(AES_CYPHER_T mode, uint8_t *data, uint8_t *key)
 }
 
 //------------------------------
+//-----------PADDING------------
+//------------------------------
+
+/**
+ * Bit Padding, ISO/IEC 7816-4
+ * A single set ('1') bit is added to messages and
+ * then as many reset ('0') bits. Terms as "100...000"
+ * Since the basic data unit is byte, so set 0x80
+ * Add another 16 bytes when len equ multiple of 16,
+ */
+int BitPadding(uint8_t *data, int *len)
+{
+    int ret, len_tmp, n;
+    uint8_t * datap;
+    len_tmp = *len;
+
+    n = 16 - (len_tmp % 16);
+    len_tmp += n;
+    datap = realloc(data, len_tmp);
+    if (datap != NULL)
+    {
+        data = datap;
+    }
+    else
+    {       
+        free(datap);
+        datap = NULL;
+        return -1;
+    }
+    memset(data + len_tmp - n, 0, n);
+    data[len_tmp - n] |= 0x80;
+    *len = len_tmp;
+
+    return ret;
+}
+
+int ANSI_X923_Padding(uint8_t *data, int len)
+{
+    int ret;
+
+    return ret;
+}
+
+//------------------------------
 //-------AES Operate Mode-------
 //------------------------------
 
@@ -701,6 +745,25 @@ int aes_encrypt_cfb128(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key,
     return 0;
 }
 
+int aes_encrypt_cfb_s_shift()
+{
+    return 0;
+}
+
+int aes_encrypt_cfb1()
+{
+    int ret = 0;
+
+    return ret;
+}
+
+int aes_encrypt_cfb8()
+{
+    int ret = 0;
+
+    return ret;
+}
+
 int main1()
 {
     printf("%02x", aes_mul(0x57, 0x83));
@@ -784,35 +847,33 @@ int main()
     aes_equ_decrypt(AES_CYPHER_192, anni_buf, key_192);
 #endif
 
+#define AES_CBC
 #ifdef AES_CBC
+    // uint8_t anni_buf1[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
+    //                       0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a};
+    char buf[] = "this is a test message!!";
+    uint8_t *anni_buf = malloc(sizeof(buf));
+    memcpy(anni_buf, buf, sizeof(buf));
+    int len = sizeof(buf);
+    BitPadding(anni_buf, &len);
+    // return 0;
+    uint8_t anni_key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+                          0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
     unsigned char iv[] = {1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1};
 
-    aes_encrypt_cbc(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), anni_key, iv);
+    aes_encrypt_cbc(AES_CYPHER_128, anni_buf, len, anni_key, iv);
     // aes_encrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
-    int ii;
-    for (ii = 0; ii < 16; ii++)
-    {
-        printf("%02x ", iv[ii]);
-    }
-    printf("\n");
-
-    for (ii = 0; ii < sizeof(anni_buf1); ii++)
-    {
-        printf("%02x ", anni_buf1[ii]);
-    }
-    printf("\n");
     
-    aes_decrypt_cbc(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), anni_key, iv);
+    aes_decrypt_cbc(AES_CYPHER_128, anni_buf, len, anni_key, iv);
     // aes_decrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
-
-    for (ii = 0; ii < sizeof(anni_buf1); ii++)
+    for (int i = 0; i < sizeof(buf); i++)
     {
-        printf("%02x ", anni_buf1[ii]);
+        printf("%c", anni_buf[i]);
     }
     printf("\n");
 #endif
 
-#define AES_CFB
+// #define AES_CFB
 #ifdef AES_CFB
     int num = 0;
     uint8_t anni_buf2[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
@@ -824,13 +885,15 @@ int main()
                            0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17,
                            0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10};
 
-    uint8_t anni_buf1[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
-                           0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
-                           0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
-                           0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51,
-                           0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11,
-                           0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef,
-                           0xf6, 0x9f, 0x24, 0x45};
+    // uint8_t anni_buf1[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
+    //                        0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
+    //                        0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
+    //                        0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51,
+    //                        0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11,
+    //                        0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef,
+    //                        0xf6, 0x9f, 0x24, 0x45};
+
+    char anni_buf1[] = "this is a test message!";
     
     uint8_t key[]       = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
                            0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
