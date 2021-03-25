@@ -90,6 +90,7 @@ uint8_t aes_mul(uint8_t x, uint8_t y)
 //aes hex dump
 void aes_dump(char *msg, uint8_t *data, int len)
 {
+    return;
     int i, j;
 
     printf("   %s: ", msg);
@@ -598,6 +599,35 @@ int ANSI_X923_Padding(uint8_t *data, int len)
 //------------------------------
 //-------AES Operate Mode-------
 //------------------------------
+int aes_encrypt_ecb(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key, int enc)
+{
+    int ret, l = 0;
+    uint8_t *d = malloc(len);
+    memcpy(d, data, len);
+    l = len;
+
+    while (l)
+    {
+        if (enc == 1)
+        {
+            aes_encrypt(mode, d, key);
+        }
+        else
+        {
+            aes_equ_decrypt(mode, d, key);
+        }
+        if (l <= 16)
+        {
+            break;
+        }
+        l -= 16;
+        d += 16;
+    }
+    memcpy(data, &d[16 - len], len);
+    free(&d[16 - len]);
+
+    return ret;
+}
 
 /**
  * AES Cipher Block Chainning Mode
@@ -757,9 +787,42 @@ int aes_encrypt_cfb1()
     return ret;
 }
 
-int aes_encrypt_cfb8()
+/**
+ * cfb 8 bits shift
+ * NOT FINISH, DRAFT
+ * 
+ */
+int aes_encrypt_cfb8(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key,
+                     uint8_t *iv, int s)
 {
     int ret = 0;
+    int n, l = 0;
+    s /= 8;
+    uint8_t *iv_tmp = malloc(32 + 1);
+    memcpy(iv_tmp, iv, 16);
+    memcpy(iv_tmp + 16, iv, 16);
+    uint8_t bits;
+
+    while (l < len)
+    {
+        if (l == 0 || l % s == 0)
+        {
+            aes_encrypt(mode, iv_tmp, key);
+            bits = iv_tmp[0] ^ data[l];
+            printf("%02x\n", bits);
+            iv_tmp[32] = bits;
+            //shift 8 bits
+            for (int i = 16; i < 32; i++)
+            {
+                iv_tmp[i] = iv_tmp[i + 1];
+            }
+            memcpy(iv_tmp, &iv_tmp[16], 16);
+        }
+        l++;
+    }
+
+    free(iv_tmp);
+    iv_tmp = NULL;
 
     return ret;
 }
@@ -837,17 +900,50 @@ int main()
         }
         printf("\r\n");
     }
+
+    // aes_encrypt(AES_CYPHER_128, anni_buf, anni_key);
+    // aes_encrypt(AES_CYPHER_192, anni_buf, key_192);
+
+    // aes_equ_decrypt(AES_CYPHER_128, anni_buf, anni_key);
+    // aes_equ_decrypt(AES_CYPHER_192, anni_buf, key_192);
+
 #endif
 
-#ifdef AES_ORIGIN
-    aes_encrypt(AES_CYPHER_128, anni_buf, anni_key);
-    aes_encrypt(AES_CYPHER_192, anni_buf, key_192);
+#define AES_ECB
+#ifdef AES_ECB
+#include "test.h"
+    char buf[] = "so we want add more test data: this is a test message!!";
+    uint8_t anni_key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+                          0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
 
-    aes_equ_decrypt(AES_CYPHER_128, anni_buf, anni_key);
-    aes_equ_decrypt(AES_CYPHER_192, anni_buf, key_192);
+    // uint8_t *anni_buf = malloc(sizeof(buf));
+    // memcpy(anni_buf, buf, sizeof(buf));
+    // int len = sizeof(buf);
+    int len = sizeof(pic);
+    printf("len is %d\n", len);
+    uint8_t *anni_buf = malloc(len);
+    memcpy(anni_buf, pic, len);
+    
+    BitPadding(anni_buf, &len);
+    printf("len is %d\n", len);
+
+    aes_encrypt_ecb(AES_CYPHER_128, anni_buf, len, anni_key, 1);
+    // aes_encrypt_ecb(AES_CYPHER_128, anni_buf, len, anni_key, 0);
+
+    uint8_t out[16];
+    FILE *fp;
+    fp = fopen("./out.txt", "w");
+
+    for (int i = 0; i < sizeof(pic); i += 3)
+    {
+        fprintf(fp, "%d, %d, %d\n", anni_buf[i], anni_buf[i + 1], anni_buf[i + 2]);
+    }
+    printf("\n");
+    fclose(fp);
+
 #endif
 
-#define AES_CBC
+// #define AES_CBC
 #ifdef AES_CBC
     // uint8_t anni_buf1[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
     //                       0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a};
@@ -873,10 +969,43 @@ int main()
     printf("\n");
 #endif
 
+// #define AES_CBC2
+#ifdef AES_CBC2
+#include "test.h"
+    // uint8_t anni_buf1[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
+    //                       0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a};
+    char buf[] = "this is a test message!!";
+    int len = sizeof(pic);
+    uint8_t *anni_buf = malloc(len);
+    memcpy(anni_buf, pic, len);
+    BitPadding(anni_buf, &len);
+    // return 0;
+    uint8_t anni_key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+                          0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
+    unsigned char iv[] = {1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1};
+
+    aes_encrypt_cbc(AES_CYPHER_128, anni_buf, len, anni_key, iv);
+    // aes_encrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
+    
+    // aes_decrypt_cbc(AES_CYPHER_128, anni_buf, len, anni_key, iv);
+    // aes_decrypt_cbc(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv);
+    uint8_t out[16];
+    FILE *fp;
+    fp = fopen("./out2.txt", "w");
+
+    for (int i = 0; i < sizeof(pic); i += 3)
+    {
+        fprintf(fp, "%d, %d, %d\n", anni_buf[i], anni_buf[i + 1], anni_buf[i + 2]);
+    }
+    printf("\n");
+    fclose(fp);
+
+#endif
+
 // #define AES_CFB
 #ifdef AES_CFB
     int num = 0;
-    uint8_t anni_buf2[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
+    uint8_t anni_buf1[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
                            0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
                            0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
                            0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51,
@@ -893,7 +1022,7 @@ int main()
     //                        0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef,
     //                        0xf6, 0x9f, 0x24, 0x45};
 
-    char anni_buf1[] = "this is a test message!";
+    char anni_buf2[] = "this is a test message!";
     
     uint8_t key[]       = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
                            0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
@@ -905,21 +1034,23 @@ int main()
     uint8_t iv[]        = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                            0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
     
-    // the back value of num should equ len % 16
-    aes_encrypt_cfb128(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv, &num, 1);
-    for (int ii = 0; ii < sizeof(anni_buf1); ii++)
-    {
-        printf("%02x ", anni_buf1[ii]);
-    }
-    printf("\n");
+    // // the back value of num should equ len % 16
+    // aes_encrypt_cfb128(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv, &num, 1);
+    // for (int ii = 0; ii < sizeof(anni_buf1); ii++)
+    // {
+    //     printf("%02x ", anni_buf1[ii]);
+    // }
+    // printf("\n");
 
-    num = 0;
-    aes_encrypt_cfb128(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv, &num, 0);
-    for (int ii = 0; ii < sizeof(anni_buf1); ii++)
-    {
-        printf("%02x ", anni_buf1[ii]);
-    }
-    printf("\n");
+    // num = 0;
+    // aes_encrypt_cfb128(AES_CYPHER_192, anni_buf1, sizeof(anni_buf1), key_192, iv, &num, 0);
+    // for (int ii = 0; ii < sizeof(anni_buf1); ii++)
+    // {
+    //     printf("%02x ", anni_buf1[ii]);
+    // }
+    // printf("\n");
+
+    aes_encrypt_cfb8(AES_CYPHER_128, anni_buf1, sizeof(anni_buf1), key, iv, 8);
     
 #endif
 
