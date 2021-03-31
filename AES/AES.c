@@ -222,34 +222,34 @@ void aes_key_expansion(AES_CYPHER_T mode, uint8_t *key, uint8_t *round)
     do
     {
         w[i] = *((uint32_t *)&key[i * 4 + 0]);
-        printf("    %2.2d:  rst: %8.8x\n", i, aes_swap_dword(w[i]));
+        // printf("    %2.2d:  rst: %8.8x\n", i, aes_swap_dword(w[i]));
     } while (++i < g_aes_nk[mode]);
 
     do
     {
-        printf("    %2.2d: ", i);
+        // printf("    %2.2d: ", i);
         if ((i % g_aes_nk[mode]) == 0)
         {
             t = aes_rot_dword(w[i - 1]);
-            printf(" rot: %8.8x", aes_swap_dword(t));
+            // printf(" rot: %8.8x", aes_swap_dword(t));
             t = aes_sub_dword(t);
-            printf(" sub: %8.8x", aes_swap_dword(t));
-            printf(" rcon: %8.8x", g_aes_rcon[i / g_aes_nk[mode] - 1]);
+            // printf(" sub: %8.8x", aes_swap_dword(t));
+            // printf(" rcon: %8.8x", g_aes_rcon[i / g_aes_nk[mode] - 1]);
             t = t ^ aes_swap_dword(g_aes_rcon[i / g_aes_nk[mode] - 1]);
-            printf(" xor: %8.8x", t);
+            // printf(" xor: %8.8x", t);
         }
         else if (g_aes_nk[mode] > 6 && (i % g_aes_nk[mode]) == 4)
         {
             t = aes_sub_dword(w[i - 1]);
-            printf(" sub: %8.8x", aes_swap_dword(t));
+            // printf(" sub: %8.8x", aes_swap_dword(t));
         }
         else
         {
             t = w[i - 1];
-            printf(" equ: %8.8x", aes_swap_dword(t));
+            // printf(" equ: %8.8x", aes_swap_dword(t));
         }
         w[i] = w[i - g_aes_nk[mode]] ^ t;
-        printf(" rst: %8.8x\n", aes_swap_dword(w[i]));
+        // printf(" rst: %8.8x\n", aes_swap_dword(w[i]));
     } while (++i < g_aes_nb[mode] * (g_aes_rounds[mode] + 1));
 
     /* key can be discarded (or zeroed) from memory */
@@ -340,34 +340,34 @@ void equ_key_expansion(AES_CYPHER_T mode, uint8_t *key, uint8_t *round, uint8_t 
     do
     {
         w[i] = *((uint32_t *)&key[i * 4 + 0]);
-        printf("    %2.2d:  rst: %8.8x\n", i, aes_swap_dword(w[i]));
+        // printf("    %2.2d:  rst: %8.8x\n", i, aes_swap_dword(w[i]));
     } while (++i < g_aes_nk[mode]);
 
     do
     {
-        printf("    %2.2d: ", i);
+        // printf("    %2.2d: ", i);
         if ((i % g_aes_nk[mode]) == 0)
         {
             t = aes_rot_dword(w[i - 1]);
-            printf(" rot: %8.8x", aes_swap_dword(t));
+            // printf(" rot: %8.8x", aes_swap_dword(t));
             t = aes_sub_dword(t);
-            printf(" sub: %8.8x", aes_swap_dword(t));
-            printf(" rcon: %8.8x", g_aes_rcon[i / g_aes_nk[mode] - 1]);
+            // printf(" sub: %8.8x", aes_swap_dword(t));
+            // printf(" rcon: %8.8x", g_aes_rcon[i / g_aes_nk[mode] - 1]);
             t = t ^ aes_swap_dword(g_aes_rcon[i / g_aes_nk[mode] - 1]);
-            printf(" xor: %8.8x", t);
+            // printf(" xor: %8.8x", t);
         }
         else if (g_aes_nk[mode] > 6 && (i % g_aes_nk[mode]) == 4)
         {
             t = aes_sub_dword(w[i - 1]);
-            printf(" sub: %8.8x", aes_swap_dword(t));
+            // printf(" sub: %8.8x", aes_swap_dword(t));
         }
         else
         {
             t = w[i - 1];
-            printf(" equ: %8.8x", aes_swap_dword(t));
+            // printf(" equ: %8.8x", aes_swap_dword(t));
         }
         w[i] = w[i - g_aes_nk[mode]] ^ t;
-        printf(" rst: %8.8x\n", aes_swap_dword(w[i]));
+        // printf(" rst: %8.8x\n", aes_swap_dword(w[i]));
     } while (++i < g_aes_nb[mode] * (g_aes_rounds[mode] + 1));
 
     //Fig.15 implement equivalent inverse cipher
@@ -557,13 +557,11 @@ int aes_equ_decrypt(AES_CYPHER_T mode, uint8_t *data, uint8_t *key)
 //------------------------------
 
 /**
- * Bit Padding, ISO/IEC 7816-4
- * A single set ('1') bit is added to messages and
- * then as many reset ('0') bits. Terms as "100...000"
+ * Byte Padding, ISO/IEC 7816-4
  * Since the basic data unit is byte, so set 0x80
  * Add another 16 bytes when len equ multiple of 16,
  */
-int BitPadding(uint8_t *data, int *len)
+int BytePadding(uint8_t *data, int *len)
 {
     int ret, len_tmp, n;
     uint8_t * datap;
@@ -572,16 +570,15 @@ int BitPadding(uint8_t *data, int *len)
     n = 16 - (len_tmp % 16);
     len_tmp += n;
     datap = realloc(data, len_tmp);
-    if (datap != NULL)
+    if (!datap)
     {
-        data = datap;
-    }
-    else
-    {       
-        free(datap);
-        datap = NULL;
+        //realloc failed.
+        free(data);
+        data = NULL;
         return -1;
     }
+    data = datap;
+    datap = NULL;
     memset(data + len_tmp - n, 0, n);
     data[len_tmp - n] |= 0x80;
     *len = len_tmp;
@@ -924,7 +921,11 @@ int main()
     uint8_t *anni_buf = malloc(len);
     memcpy(anni_buf, pic, len);
     
-    BitPadding(anni_buf, &len);
+    if (BytePadding(anni_buf, &len) < 0)
+    {
+        printf("padding failed\n");
+        return 0;
+    }
     printf("len is %d\n", len);
 
     aes_encrypt_ecb(AES_CYPHER_128, anni_buf, len, anni_key, 1);
@@ -951,7 +952,7 @@ int main()
     uint8_t *anni_buf = malloc(sizeof(buf));
     memcpy(anni_buf, buf, sizeof(buf));
     int len = sizeof(buf);
-    BitPadding(anni_buf, &len);
+    BytePadding(anni_buf, &len);
     // return 0;
     uint8_t anni_key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
                           0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
@@ -978,7 +979,7 @@ int main()
     int len = sizeof(pic);
     uint8_t *anni_buf = malloc(len);
     memcpy(anni_buf, pic, len);
-    BitPadding(anni_buf, &len);
+    BytePadding(anni_buf, &len);
     // return 0;
     uint8_t anni_key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
                           0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
