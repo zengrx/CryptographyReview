@@ -561,7 +561,7 @@ int aes_equ_decrypt(AES_CYPHER_T mode, uint8_t *data, uint8_t *key)
  * Since the basic data unit is byte, so set 0x80
  * Add another 16 bytes when len equ multiple of 16,
  */
-int BytePadding(uint8_t *data, int *len)
+int BytePadding(uint8_t **data, int *len)
 {
     int ret, len_tmp, n;
     uint8_t * datap;
@@ -569,18 +569,16 @@ int BytePadding(uint8_t *data, int *len)
 
     n = 16 - (len_tmp % 16);
     len_tmp += n;
-    datap = realloc(data, len_tmp);
+    datap = realloc(*data, len_tmp);
     if (!datap)
     {
         //realloc failed.
-        free(data);
-        data = NULL;
         return -1;
     }
-    data = datap;
+    *data = datap;
     datap = NULL;
-    memset(data + len_tmp - n, 0, n);
-    data[len_tmp - n] |= 0x80;
+    memset((*data) + len_tmp - n, 0, n);
+    (*data)[len_tmp - n] |= 0x80;
     *len = len_tmp;
 
     return ret;
@@ -921,12 +919,15 @@ int main()
     uint8_t *anni_buf = malloc(len);
     memcpy(anni_buf, pic, len);
     
-    if (BytePadding(anni_buf, &len) < 0)
+    if (BytePadding(&anni_buf, &len) < 0)
     {
         printf("padding failed\n");
+        free(anni_buf);
+        anni_buf = NULL;
         return 0;
     }
-    printf("len is %d\n", len);
+    printf("len is %d, address is %p\n", len, anni_buf);
+    return 0;
 
     aes_encrypt_ecb(AES_CYPHER_128, anni_buf, len, anni_key, 1);
     // aes_encrypt_ecb(AES_CYPHER_128, anni_buf, len, anni_key, 0);
