@@ -31,6 +31,7 @@ def createNewImage(img, path):
             b = line[2]
             pixels[i, j] = (r, g, b)
     img.show()
+    img.save('./out.bmp')
 
 # python imgtest.py -in ./pk.bmp ./out.txt
 # python imgtest.py -out ./pk.bmp ./test.h
