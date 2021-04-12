@@ -764,8 +764,6 @@ int aes_encrypt_cfb128(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key,
 
     free(cipher);
     free(iv_tmp);
-    cipher = NULL;
-    iv_tmp = NULL;
 
     return 0;
 }
@@ -795,20 +793,17 @@ int aes_encrypt_cfb8(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key,
     uint8_t *iv_tmp = malloc(32 + 1);
     memcpy(iv_tmp, iv, 16);
     memcpy(iv_tmp + 16, iv, 16);
-    uint8_t bits;
     uint8_t *d = malloc(len);
 
     while (l < len)
     {
         aes_encrypt(mode, iv_tmp, key);
-        bits = iv_tmp[0] ^ data[l];
-        // printf("%02x\n", bits);
-        d[l] = bits;
+        d[l] = iv_tmp[32] = iv_tmp[0] ^ data[l];
+        // printf("%02x\n", d[l]);
         if (0 == enc)
         {
-            bits = data[l];
+            iv_tmp[32] = data[l];
         }
-        iv_tmp[32] = bits;
         //shift 8 bits
         for (int i = 16; i < 32; i++)
         {
@@ -847,6 +842,64 @@ int aes_encrypt_ofb(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key,
     }
 
     free(iv_tmp);
+
+    return ret;
+}
+
+/**
+ * increment counter to generate input block
+ * do notice the total block number N should
+ * less then 2^64 in AES, otherwise the uniqueness
+ * of counter block will lost.
+ */
+void ctr128_inc(uint8_t *counter)
+{
+    uint32_t n = 16, i = 1;
+
+    do {
+        --n;
+        i += counter[n]; // increase
+        counter[n] = (uint8_t)i; // discard carry if 0xff
+        i >>= 8; // clear original value but keep the carry
+    } while (n);
+}
+
+/**
+ * AES CTR
+ * [nonce]|[counter]
+ */
+int aes_encrypt_ctr(AES_CYPHER_T mode, uint8_t *data, int len, uint8_t *key,
+                    uint8_t *iv)
+{
+    int ret, l = 0;
+    uint8_t *input = malloc(16);
+    // the input formated as first 8bytes nonce then fill 8bytes counter
+    // memset(input, 0, 16);
+    // memcpy(input, iv, 8);
+    memcpy(input, iv, 16);
+    uint8_t *counter = malloc(16);
+    memcpy(counter, input, 16);
+
+    while(l < len)
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            printf("%02x ", input[i]);
+        }
+        aes_encrypt(mode, input, key);
+        for (int i = 0; i < 16 && l + i < len; i++)
+        {
+            printf("%02x ", input[i]);
+            data[l + 1] ^= input[i];
+        }
+        ctr128_inc(counter);
+        memcpy(counter, iv, 8);
+        memcpy(input, counter, 16);
+        l += 16;
+    }
+
+    free(input);
+    free(counter);
 
     return ret;
 }
@@ -1102,7 +1155,7 @@ int main()
     
 #endif
 
-#define AES_OFB
+// #define AES_OFB
 #ifdef AES_OFB
     uint8_t anni_buf[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
                           0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
@@ -1124,6 +1177,26 @@ int main()
     aes_encrypt_ofb(AES_CYPHER_128, anni_buf, sizeof(anni_buf), key, iv); //enc
     aes_encrypt_ofb(AES_CYPHER_128, anni_buf, sizeof(anni_buf), key, iv); //dec
 
+#endif
+
+#define AES_CTR
+#ifdef AES_CTR
+    uint8_t anni_buf[] = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
+                          0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
+                          0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
+                          0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51,
+                          0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11,
+                          0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef,
+                          0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17,
+                          0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c,};// 0x37, 0x10};
+
+    uint8_t key[]      = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+                          0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
+
+    uint8_t iv[]       = {0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+                          0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff};
+    aes_encrypt_ctr(AES_CYPHER_128, anni_buf, sizeof(anni_buf), key, iv);
+    aes_encrypt_ctr(AES_CYPHER_128, anni_buf, sizeof(anni_buf), key, iv);
 #endif
 
     return 0;
