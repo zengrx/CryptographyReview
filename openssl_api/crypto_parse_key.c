@@ -116,7 +116,7 @@ int parsePrivKey(const char * key)
 	case EVP_PKEY_RSA:
 		LOGI("======>Parsing a %d RSA private key\n", keylen * 8);
 		RSA *rsa_key = NULL;
-		const BIGNUM **rsa_n, **rsa_e, **rsa_d, **rsa_p, **rsa_q;
+		const BIGNUM *rsa_n, *rsa_e, *rsa_d, *rsa_p, *rsa_q;
 		const BIGNUM *rsa_dp, *rsa_dq, *rsa_iq;
 		char *rsa_e_dec = NULL, *rsa_n_hex = NULL, *rsa_d_hex = NULL;
 		char *rsa_p_hex = NULL, *rsa_q_hex = NULL; //two primes
@@ -126,10 +126,10 @@ int parsePrivKey(const char * key)
 			goto parse_priv_key_err;
 
 		//get key components
-		RSA_get0_key(rsa_key, rsa_n, rsa_e, rsa_d); //phi(n) = phi(p) * phi(q)
-		rsa_n_hex = BN_bn2hex(*rsa_n);
-		rsa_e_dec = BN_bn2dec(*rsa_e);
-		rsa_d_hex = BN_bn2hex(*rsa_d);
+		RSA_get0_key(rsa_key, &rsa_n, &rsa_e, &rsa_d); //phi(n) = phi(p) * phi(q)
+		rsa_n_hex = BN_bn2hex(rsa_n);
+		rsa_e_dec = BN_bn2dec(rsa_e);
+		rsa_d_hex = BN_bn2hex(rsa_d);
 
 		prettyPrint("Modulus:", rsa_n_hex, keylen * 2);
 		int e_num = atoi(rsa_e_dec);
@@ -139,9 +139,9 @@ int parsePrivKey(const char * key)
 		prettyPrint("Private Exponent:", rsa_d_hex, keylen);
 
 		//get primes
-		RSA_get0_factors(rsa_key, rsa_p, rsa_q);
-		rsa_p_hex = BN_bn2hex(*rsa_p);
-		rsa_q_hex = BN_bn2hex(*rsa_q);
+		RSA_get0_factors(rsa_key, &rsa_p, &rsa_q);
+		rsa_p_hex = BN_bn2hex(rsa_p);
+		rsa_q_hex = BN_bn2hex(rsa_q);
 
 		keylen = strlen(rsa_p_hex);
 		prettyPrint("Prime1:", rsa_p_hex, keylen);
