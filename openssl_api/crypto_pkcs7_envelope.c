@@ -112,10 +112,17 @@ EVP_PKEY *parse_prikey(char *pkey_file)
 	if (!fp)
 		goto parse_prikey_err;
 
-	if (!PEM_read_PrivateKey(fp, &pkey, NULL, NULL))
+	pkey = d2i_PrivateKey_fp(fp, &pkey);
+	if (!pkey) //not der
+	{
+		rewind(fp);
+		if (!PEM_read_PrivateKey(fp, &pkey, NULL, NULL))
 		goto parse_prikey_err;
+	}
 
 	//TODO RSA private only
+
+	fclose(fp);
 
 	return pkey;
 
@@ -147,6 +154,7 @@ int open_pkcs7_envelope(EVP_PKEY *prikey, X509 *cert, char *fin, char *fout)
 	FILE *fp = NULL;
 	PKCS7 *p7 = NULL;
 	BIO *b_out = NULL;
+	char szErr[1024] = {0}; //error msg buffer
 
 	fp = fopen(fin, "r");
 	if (!fp)
@@ -158,8 +166,13 @@ int open_pkcs7_envelope(EVP_PKEY *prikey, X509 *cert, char *fin, char *fout)
 	if (!b_out)
 		goto open_pkcs7_envelope_err;
 	//now open the envelope
-	if (1 != PKCS7_decrypt(p7, prikey, cert, b_out, PKCS7_BINARY))
+	if (1 != PKCS7_decrypt(p7, prikey, cert, b_out, PKCS7_BINARY)) {
+		ret = ERR_get_error();
+		ERR_error_string(ret, szErr);
+		fprintf( stderr, "TestPKCS7Enc: PKCS7_decrypt failed: \nopenssl return %d, %s\n", ret, szErr );
+
 		goto open_pkcs7_envelope_err;
+	}
 
 	len = BIO_get_mem_data(b_out, &p);
 	printf("%d\n", len);
@@ -180,20 +193,33 @@ open_pkcs7_envelope_err:
 	return ret;
 }
 
-//pkcs7_envelope [cert file] [private key file] [p7.der] [plain text]
+//pkcs7_envelope -s/-o [cert file] [private key file] [p7.der] [plain text]
 int main(int argc, char * argv[])
 {
 	int ret = 0;
+	X509 *c = NULL;
+	EVP_PKEY *pkey = NULL;
 
-	//seal
-	X509 *c = parse_cert(argv[1]);
-	// if (c)
-	// 	seal_pkcs7_envelope(c, NULL, argv[3], NULL);
-	
-	//open
-	EVP_PKEY *pkey = parse_prikey(argv[2]);
-	if (pkey)
-		open_pkcs7_envelope(pkey, c, argv[3], argv[4]);
+	if (argc < 6) {
+		printf("%s -s/-o [cert file] [private key file] [p7.der] [plain text]\n", argv[0]);
+		ret = EXIT_FAILURE;
+	}
+	else if (strcmp(argv[1], "-s") == 0) {
+		//seal
+		c = parse_cert(argv[2]);
+		if (c)
+			ret = seal_pkcs7_envelope(c, NULL, argv[4], NULL);
+	}
+	else if (strcmp(argv[1], "-o") == 0) {
+		//open
+		pkey = parse_prikey(argv[3]);
+		if (pkey)
+			ret = open_pkcs7_envelope(pkey, c, argv[4], argv[5]);
+	}
+	else {
+		printf("Usage %s\n -s for seal, -o for open\n", argv[0]);
+		ret = EXIT_FAILURE;
+	}
 
 	return ret;
 }
